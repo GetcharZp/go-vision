@@ -5,10 +5,8 @@ import (
 	"github.com/getcharzp/go-vision"
 	"github.com/up-zero/gotool/convertutil"
 	"github.com/up-zero/gotool/imageutil"
-	"image"
-	"runtime"
-
 	ort "github.com/yalue/onnxruntime_go"
+	"image"
 )
 
 // Engine 持有 ONNX Session，负责创建 ImageContext
@@ -118,9 +116,6 @@ func (e *Engine) EncodeImage(img image.Image) (*ImageContext, error) {
 		newW:            newW,
 		newH:            newH,
 	}
-
-	// 设置 Finalizer 以防用户忘记 Destroy
-	runtime.SetFinalizer(ctx, func(c *ImageContext) { c.Destroy() })
 
 	return ctx, nil
 }
