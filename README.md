@@ -6,7 +6,7 @@ tags:
   - image-segmentation
 ---
 <div align="center" style="text-align: center;">
-  <img src="./assets/logo.png" alt="logo" width="300" style="display: block; margin: 0 auto;" />
+  <img src="./assets/logo.png" alt="logo" width="200" style="display: block; margin: 0 auto;" />
 </div>
 
 <p align="center">
