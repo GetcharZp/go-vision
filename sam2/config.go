@@ -42,8 +42,9 @@ type Config struct {
 	DecodeModelPath    string // Mask解码模型
 
 	// 可选参数
-	UseCuda    bool // (可选) 是否启用 CUDA
-	NumThreads int  // (可选) ONNX 线程数, 默认由CPU核心数决定
+	UseCuda           bool // (可选) 是否启用 CUDA
+	NumThreads        int  // (可选) ONNX 线程数, 默认由CPU核心数决定
+	EnableCpuMemArena bool // (可选) 是否开启 ONNX 内存池
 }
 
 // DefaultConfig 返回默认配置

@@ -1,0 +1,55 @@
+package yolov11
+
+import (
+	"github.com/getcharzp/go-vision"
+	"image"
+)
+
+// Config 引擎的初始化参数
+type Config struct {
+	ModelPath          string // ONNX 模型路径
+	OnnxRuntimeLibPath string // ONNX Runtime 动态库路径
+
+	// 推理参数
+	ConfThreshold float32 // 置信度阈值 (默认 0.45)
+	IOUThreshold  float32 // NMS IOU 阈值 (默认 0.5)
+	MaskThreshold float32 // Mask 二值化阈值 (默认 0.5)
+
+	// 模型参数
+	InputSize     int // 默认 640
+	NumClasses    int // 默认 80
+	NumMaskCoeffs int // 默认 32
+
+	// 可选参数
+	UseCuda           bool // (可选) 是否启用 CUDA
+	NumThreads        int  // (可选) ONNX 线程数, 默认由CPU核心数决定
+	EnableCpuMemArena bool // (可选) 是否开启 ONNX 内存池
+}
+
+// DefaultConfig 默认配置
+func DefaultConfig() Config {
+	return Config{
+		OnnxRuntimeLibPath: vision.DefaultLibraryPath(),
+		ConfThreshold:      0.45,
+		IOUThreshold:       0.50,
+		MaskThreshold:      0.50,
+		InputSize:          640,
+		NumClasses:         80,
+		NumMaskCoeffs:      32,
+	}
+}
+
+// DefaultSegConfig 分割的默认配置
+func DefaultSegConfig() Config {
+	cfg := DefaultConfig()
+	cfg.ModelPath = "./yolov11_weights/yolo11m-seg.onnx"
+	return cfg
+}
+
+// SegResult 分割结果
+type SegResult struct {
+	ClassID int
+	Score   float32
+	Box     image.Rectangle // 分割出的矩形区域
+	Mask    *image.Gray     // 解码后的 Mask
+}

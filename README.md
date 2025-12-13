@@ -82,3 +82,40 @@ func main() {
 | 原图                                                  | Mask图                                                      |
 |-----------------------------------------------------|------------------------------------------------------------|
 | <img width="100%" src="./examples/test.png" alt=""> | <img width="100%" src="./examples/output_mask.png" alt=""> |
+
+### yolov11-seg
+
+```go
+package main
+
+import (
+	"fmt"
+	"github.com/getcharzp/go-vision/yolov11"
+	"github.com/up-zero/gotool/imageutil"
+	"log"
+)
+
+func main() {
+	engine, err := yolov11.NewSegEngine(yolov11.DefaultSegConfig())
+	if err != nil {
+		log.Fatalf("初始化引擎失败: %v", err)
+	}
+	defer engine.Destroy()
+
+	img, _ := imageutil.Open("./test.png")
+	results, err := engine.Predict(img)
+	if err != nil {
+		log.Fatalf("预测失败: %v", err)
+	}
+
+	fmt.Printf("检测到目标: %d 个\n", len(results))
+	for idx, res := range results {
+		fmt.Printf("Class: %d, Score: %.2f, Box: %v\n", res.ClassID, res.Score, res.Box)
+		imageutil.Save(fmt.Sprintf("yolov11_seg_mask_%d.png", idx), res.Mask, 100)
+	}
+}
+```
+
+| 原图                                                  | Mask图                                                             |
+|-----------------------------------------------------|-------------------------------------------------------------------|
+| <img width="100%" src="./examples/test.png" alt=""> | <img width="100%" src="./examples/yolov11_seg_mask_0.png" alt=""> |
