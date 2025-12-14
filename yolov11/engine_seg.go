@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/getcharzp/go-vision"
 	"github.com/up-zero/gotool/convertutil"
-	"github.com/up-zero/gotool/imageutil"
 	ort "github.com/yalue/onnxruntime_go"
 	"image"
 	"image/color"
@@ -49,10 +48,10 @@ func (e *SegEngine) Destroy() {
 	}
 }
 
-// Predict 执行推理
+// Predict 执行分割推理
 func (e *SegEngine) Predict(img image.Image) ([]SegResult, error) {
 	// 预处理
-	inputTensor, params, err := e.preprocess(img)
+	inputTensor, params, err := preprocess(img, e.config.InputSize)
 	if err != nil {
 		return nil, fmt.Errorf("预处理失败: %w", err)
 	}
@@ -74,46 +73,6 @@ func (e *SegEngine) Predict(img image.Image) ([]SegResult, error) {
 
 	// 后处理
 	return e.postprocess(rawOutput0, rawOutput1, params)
-}
-
-// imageParams 图片尺寸信息
-type imageParams struct {
-	origW, origH int
-	scale        float32
-}
-
-// preprocess 预处理
-func (e *SegEngine) preprocess(img image.Image) (*ort.Tensor[float32], imageParams, error) {
-	bounds := img.Bounds()
-	params := imageParams{
-		origW: bounds.Dx(),
-		origH: bounds.Dy(),
-	}
-
-	scale := float32(e.config.InputSize) / float32(max(params.origW, params.origH))
-	params.scale = scale
-
-	newW := int(float32(params.origW) * scale)
-	newH := int(float32(params.origH) * scale)
-
-	resized := imageutil.Resize(img, newW, newH)
-
-	// 准备 Tensor 数据 (CHW + Normalize 0-1)
-	data := make([]float32, 3*e.config.InputSize*e.config.InputSize)
-	for y := 0; y < newH; y++ {
-		for x := 0; x < newW; x++ {
-			r, g, b, _ := resized.At(x, y).RGBA()
-
-			idx := y*e.config.InputSize + x
-			data[idx] = float32(r) / 65535.0                                         // R
-			data[e.config.InputSize*e.config.InputSize+idx] = float32(g) / 65535.0   // G
-			data[2*e.config.InputSize*e.config.InputSize+idx] = float32(b) / 65535.0 // B
-		}
-	}
-
-	shape := ort.NewShape(1, 3, int64(e.config.InputSize), int64(e.config.InputSize))
-	tensor, err := ort.NewTensor(shape, data)
-	return tensor, params, err
 }
 
 // postprocess 后处理
@@ -151,15 +110,6 @@ func (e *SegEngine) postprocess(out0, out1 *ort.Tensor[float32], params imagePar
 	return results, nil
 }
 
-// segInternal 候选结果
-type segInternal struct {
-	box        [4]float32 // cx, cy, w, h (模型尺度)
-	origBox    image.Rectangle
-	score      float32
-	classID    int
-	maskCoeffs []float32
-}
-
 // parseCandidates 解析候选框
 //
 // # Params:
@@ -176,8 +126,8 @@ type segInternal struct {
 //	channels: 模型输出的通道数
 //	anchors: 模型输出的锚点数
 //	params: 图片尺寸信息
-func (e *SegEngine) parseCandidates(data []float32, channels, anchors int, params imageParams) []segInternal {
-	var cands []segInternal
+func (e *SegEngine) parseCandidates(data []float32, channels, anchors int, params imageParams) []candidate {
+	var cands []candidate
 
 	// 检查通道数
 	expectedChannels := 4 + e.config.NumClasses + e.config.NumMaskCoeffs
@@ -223,7 +173,7 @@ func (e *SegEngine) parseCandidates(data []float32, channels, anchors int, param
 		origX2 := min(params.origW, int(x2/params.scale))
 		origY2 := min(params.origH, int(y2/params.scale))
 
-		cands = append(cands, segInternal{
+		cands = append(cands, candidate{
 			box:        [4]float32{x1, y1, x2, y2},
 			origBox:    image.Rect(origX1, origY1, origX2, origY2),
 			score:      maxScore,
@@ -244,7 +194,7 @@ func (e *SegEngine) parseCandidates(data []float32, channels, anchors int, param
 //	h: 单个原型掩码的高度
 //	w: 单个原型掩码的宽度
 //	params: 图片尺寸信息
-func (e *SegEngine) decodeMask(cand segInternal, protos []float32, c, h, w int, params imageParams) *image.Gray {
+func (e *SegEngine) decodeMask(cand candidate, protos []float32, c, h, w int, params imageParams) *image.Gray {
 	finalMask := image.NewGray(image.Rect(0, 0, params.origW, params.origH))
 
 	// Mask 原型图相对于 InputSize(640) 的缩放比例

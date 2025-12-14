@@ -19,6 +19,7 @@ type Config struct {
 	InputSize     int // 默认 640
 	NumClasses    int // 默认 80
 	NumMaskCoeffs int // 默认 32
+	NumKeyPoints  int // 默认 17
 
 	// 可选参数
 	UseCuda           bool // (可选) 是否启用 CUDA
@@ -36,7 +37,15 @@ func DefaultConfig() Config {
 		InputSize:          640,
 		NumClasses:         80,
 		NumMaskCoeffs:      32,
+		NumKeyPoints:       17,
 	}
+}
+
+// DefaultDetConfig 检测的默认配置
+func DefaultDetConfig() Config {
+	cfg := DefaultConfig()
+	cfg.ModelPath = "./yolov11_weights/yolo11m.onnx"
+	return cfg
 }
 
 // DefaultSegConfig 分割的默认配置
@@ -46,10 +55,86 @@ func DefaultSegConfig() Config {
 	return cfg
 }
 
+// DefaultClsConfig 分类的默认配置
+func DefaultClsConfig() Config {
+	cfg := DefaultConfig()
+	cfg.InputSize = 224
+	cfg.ModelPath = "./yolov11_weights/yolo11m-cls.onnx"
+	return cfg
+}
+
+// DefaultPoseConfig 姿势的默认配置
+func DefaultPoseConfig() Config {
+	cfg := DefaultConfig()
+	cfg.NumClasses = 1
+	cfg.ModelPath = "./yolov11_weights/yolo11m-pose.onnx"
+	return cfg
+}
+
+// imageParams 图片尺寸信息
+type imageParams struct {
+	origW, origH int
+	scale        float32
+}
+
+// 候选结果
+type candidate struct {
+	box          [4]float32      // 模型输出的 cx, cy, w, h
+	origBox      image.Rectangle // 原始图片的检测框
+	score        float32
+	classID      int
+	maskCoeffs   []float32 // Mask 系数
+	rawKeyPoints []float32
+}
+
+// DetResult 目标检测结果
+type DetResult struct {
+	// 分类ID，例如：
+	//	0: person
+	//  1: bicycle
+	//  2: car
+	// - 详细映射参考：
+	//	https://github.com/ultralytics/ultralytics/blob/main/ultralytics/cfg/datasets/coco.yaml
+	ClassID int
+	Score   float32
+	Box     image.Rectangle // 检测框
+}
+
 // SegResult 分割结果
 type SegResult struct {
+	// 分类ID，例如：
+	//	0: person
+	//  1: bicycle
+	//  2: car
+	// 详细映射参考：
+	//	https://github.com/ultralytics/ultralytics/blob/main/ultralytics/cfg/datasets/coco.yaml
 	ClassID int
 	Score   float32
 	Box     image.Rectangle // 分割出的矩形区域
 	Mask    *image.Gray     // 解码后的 Mask
+}
+
+// ClassResult 分类结果
+type ClassResult struct {
+	// 分类ID，例如：
+	//	436: station wagon
+	//	656: minivan
+	// 详细映射参考：
+	//	https://github.com/ultralytics/ultralytics/blob/main/ultralytics/cfg/datasets/ImageNet.yaml
+	ClassID int
+	Score   float32
+}
+
+// KeyPoint 单个关键点
+type KeyPoint struct {
+	X, Y  int     // 原图坐标
+	Score float32 // 可见性/置信度
+}
+
+// PoseResult 姿态估计结果
+type PoseResult struct {
+	ClassID   int
+	Score     float32
+	Box       image.Rectangle
+	KeyPoints []KeyPoint // 关键点列表
 }
