@@ -71,6 +71,15 @@ func DefaultPoseConfig() Config {
 	return cfg
 }
 
+// DefaultOBBConfig OBB的默认配置
+func DefaultOBBConfig() Config {
+	cfg := DefaultConfig()
+	cfg.InputSize = 1024
+	cfg.NumClasses = 15
+	cfg.ModelPath = "./yolov11_weights/yolo11m-obb.onnx"
+	return cfg
+}
+
 // imageParams 图片尺寸信息
 type imageParams struct {
 	origW, origH int
@@ -85,6 +94,7 @@ type candidate struct {
 	classID      int
 	maskCoeffs   []float32 // Mask 系数
 	rawKeyPoints []float32
+	angle        float32 // 旋转角度
 }
 
 // DetResult 目标检测结果
@@ -137,4 +147,16 @@ type PoseResult struct {
 	Score     float32
 	Box       image.Rectangle
 	KeyPoints []KeyPoint // 关键点列表
+}
+
+// OBBResult 旋转目标检测结果
+type OBBResult struct {
+	ClassID int
+	Score   float32
+	// 旋转框的顶点坐标
+	// 顺序通常是：TopLeft, TopRight, BottomRight, BottomLeft
+	Corners [4]image.Point
+
+	Center image.Point
+	Angle  float32 // 弧度
 }

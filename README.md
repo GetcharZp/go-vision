@@ -234,3 +234,43 @@ func main() {
 | 原图                                                    | 姿态图                                                         |
 |-------------------------------------------------------|-------------------------------------------------------------|
 | <img width="100%" src="./examples/person.jpg" alt=""> | <img width="100%" src="./examples/yolov11_pose.jpg" alt=""> |
+
+### yolov11-obb
+
+```go
+package main
+
+import (
+	"github.com/getcharzp/go-vision/yolov11"
+	"github.com/up-zero/gotool/imageutil"
+	"image"
+	"image/color"
+	"image/draw"
+	"log"
+)
+
+func main() {
+	engine, err := yolov11.NewOBBEngine(yolov11.DefaultOBBConfig())
+	if err != nil {
+		log.Fatalf("初始化引擎失败: %v", err)
+	}
+	defer engine.Destroy()
+
+	img, _ := imageutil.Open("./ship.jpg")
+	results, err := engine.Predict(img)
+	if err != nil {
+		log.Fatalf("预测失败: %v", err)
+	}
+
+	dst := image.NewRGBA(img.Bounds())
+	draw.Draw(dst, img.Bounds(), img, img.Bounds().Min, draw.Src)
+	for _, result := range results {
+		imageutil.DrawThickPolygonOutline(dst, result.Corners[:], 3, color.RGBA{R: 255, G: 0, B: 0, A: 255})
+	}
+	imageutil.Save("yolov11_obb.jpg", dst, 50)
+}
+```
+
+| 原图                                                  | OBB图                                                       |
+|-----------------------------------------------------|------------------------------------------------------------|
+| <img width="100%" src="./examples/ship.jpg" alt=""> | <img width="100%" src="./examples/yolov11_obb.jpg" alt=""> |

@@ -73,6 +73,7 @@ func (e *PoseEngine) Predict(img image.Image) ([]PoseResult, error) {
 	return e.postprocess(data, shape, params)
 }
 
+// postprocess 后处理
 func (e *PoseEngine) postprocess(data []float32, shape []int64, params imageParams) ([]PoseResult, error) {
 	numChannels := int(shape[1])
 	numAnchors := int(shape[2])
