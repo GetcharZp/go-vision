@@ -24,7 +24,7 @@ tags:
    </a>
 </p>
 
-go-vision 基于 Golang + [ONNX](https://github.com/microsoft/onnxruntime/releases/tag/v1.23.2) 构建的轻量级视觉库
+go-vision 基于 Golang + [ONNX](https://github.com/microsoft/onnxruntime/releases/tag/v1.23.2) 构建的视觉库，支持 SAM2、YOLOv11-Det、YOLOv11-Seg、YOLOv11-Cls、YOLOv11-Pose、YOLOv11-OBB 等模型。
 
 ## 安装
 
