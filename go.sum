@@ -2,3 +2,7 @@ github.com/up-zero/gotool v0.0.0-20251206003902-bde76422a8d8 h1:KBFHSPq6gG49K8/C
 github.com/up-zero/gotool v0.0.0-20251206003902-bde76422a8d8/go.mod h1:+jwIpLHojqHUvbEmNXv/F5acdHSEkJIbNXRqT1IE78I=
 github.com/yalue/onnxruntime_go v1.23.0 h1:Hin0mFphwGOeT7xEQrAIi/p2O6ngmSy4uz0yXkC9yCw=
 github.com/yalue/onnxruntime_go v1.23.0/go.mod h1:b4X26A8pekNb1ACJ58wAXgNKeUCGEAQ9dmACut9Sm/4=
+golang.org/x/image v0.34.0 h1:33gCkyw9hmwbZJeZkct8XyR11yH889EQt/QH4VmXMn8=
+golang.org/x/image v0.34.0/go.mod h1:2RNFBZRB+vnwwFil8GkMdRvrJOFd1AzdZI6vOY+eJVU=
+golang.org/x/text v0.32.0 h1:ZD01bjUt1FQ9WJ0ClOL5vxgxOI/sVCNgX1YtKwcY0mU=
+golang.org/x/text v0.32.0/go.mod h1:o/rUWzghvpD5TXrTIBuJU77MTaN0ljMWE47kxGJQ7jY=
