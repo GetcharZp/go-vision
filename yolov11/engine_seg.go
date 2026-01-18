@@ -3,8 +3,8 @@ package yolov11
 import (
 	"fmt"
 	"github.com/getcharzp/go-vision"
+	ort "github.com/getcharzp/onnxruntime_purego"
 	"github.com/up-zero/gotool/convertutil"
-	ort "github.com/yalue/onnxruntime_go"
 	"image"
 	"image/color"
 	"log"
@@ -12,25 +12,24 @@ import (
 
 // SegEngine YOLOv11-seg Engine
 type SegEngine struct {
-	session *ort.DynamicAdvancedSession
+	//session *ort.DynamicAdvancedSession
+	session *ort.Session
 	config  Config
 }
 
 // NewSegEngine 初始化分割引擎
 func NewSegEngine(cfg Config) (*SegEngine, error) {
-	onnxConfig := new(vision.OnnxConfig)
-	if err := convertutil.CopyProperties(cfg, onnxConfig); err != nil {
+	oc := new(vision.OnnxConfig)
+	if err := convertutil.CopyProperties(cfg, oc); err != nil {
 		return nil, fmt.Errorf("复制参数失败: %w", err)
 	}
 	// 初始化 ONNX
-	if err := onnxConfig.New(); err != nil {
+	if err := oc.New(); err != nil {
 		return nil, err
 	}
 
 	// 创建 Session
-	inputs := []string{"images"}
-	outputs := []string{"output0", "output1"}
-	session, err := ort.NewDynamicAdvancedSession(cfg.ModelPath, inputs, outputs, onnxConfig.SessionOptions)
+	session, err := oc.OnnxEngine.NewSession(cfg.ModelPath, oc.SessionOptions)
 	if err != nil {
 		return nil, fmt.Errorf("创建 ONNX 会话失败: %w", err)
 	}
@@ -58,32 +57,47 @@ func (e *SegEngine) Predict(img image.Image) ([]SegResult, error) {
 	defer inputTensor.Destroy()
 
 	// 推理
-	outputValues := make([]ort.Value, 2)
-	err = e.session.Run([]ort.Value{inputTensor}, outputValues)
+	inputValues := map[string]*ort.Value{
+		"images": inputTensor,
+	}
+	outputValues, err := e.session.Run(inputValues)
 	if err != nil {
 		return nil, fmt.Errorf("推理失败: %w", err)
 	}
-	defer outputValues[0].Destroy()
-	defer outputValues[1].Destroy()
+	defer func() {
+		for _, v := range outputValues {
+			v.Destroy()
+		}
+	}()
 
 	// output0: Detections [1, 116, 8400]
-	rawOutput0 := outputValues[0].(*ort.Tensor[float32])
 	// output1: Mask Protos [1, 32, 160, 160]
-	rawOutput1 := outputValues[1].(*ort.Tensor[float32])
 
 	// 后处理
-	return e.postprocess(rawOutput0, rawOutput1, params)
+	return e.postprocess(outputValues["output0"], outputValues["output1"], params)
 }
 
 // postprocess 后处理
-func (e *SegEngine) postprocess(out0, out1 *ort.Tensor[float32], params imageParams) ([]SegResult, error) {
-	data0 := out0.GetData()
-	shape0 := out0.GetShape()     // [1, 116, 8400]
+func (e *SegEngine) postprocess(out0, out1 *ort.Value, params imageParams) ([]SegResult, error) {
+	data0, err := ort.GetTensorData[float32](out0)
+	if err != nil {
+		return nil, fmt.Errorf("获取输出数据失败: %w", err)
+	}
+	shape0, err := out0.GetShape() // [1, 116, 8400]
+	if err != nil {
+		return nil, fmt.Errorf("获取输出形状失败: %w", err)
+	}
 	numChannels := int(shape0[1]) // 4 (box) + 80 (cls) + 32 (mask) = 116
 	numAnchors := int(shape0[2])  // 8400
 
-	data1 := out1.GetData()
-	shape1 := out1.GetShape() // [1, 32, 160, 160]
+	data1, err := ort.GetTensorData[float32](out1)
+	if err != nil {
+		return nil, fmt.Errorf("获取输出数据失败: %w", err)
+	}
+	shape1, err := out1.GetShape() // [1, 32, 160, 160]
+	if err != nil {
+		return nil, fmt.Errorf("获取输出形状失败: %w", err)
+	}
 	protoC, protoH, protoW := int(shape1[1]), int(shape1[2]), int(shape1[3])
 
 	// 解析候选框

@@ -3,8 +3,12 @@ module github.com/getcharzp/go-vision
 go 1.24.4
 
 require (
-	github.com/up-zero/gotool v0.0.0-20251206003902-bde76422a8d8
-	github.com/yalue/onnxruntime_go v1.23.0
+	github.com/getcharzp/onnxruntime_purego v0.0.0-20260118041137-401482b32507
+	github.com/up-zero/gotool v0.0.0-20260117023945-15c46677ae16
 	golang.org/x/image v0.34.0
-	golang.org/x/text v0.32.0
+)
+
+require (
+	github.com/ebitengine/purego v0.9.1 // indirect
+	golang.org/x/text v0.32.0 // indirect
 )

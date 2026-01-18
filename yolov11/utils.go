@@ -1,8 +1,8 @@
 package yolov11
 
 import (
+	ort "github.com/getcharzp/onnxruntime_purego"
 	"github.com/up-zero/gotool/imageutil"
-	ort "github.com/yalue/onnxruntime_go"
 	"image"
 	"image/color"
 	"image/draw"
@@ -11,7 +11,7 @@ import (
 )
 
 // preprocess 预处理
-func preprocess(img image.Image, inputSize int) (*ort.Tensor[float32], imageParams, error) {
+func preprocess(img image.Image, inputSize int) (*ort.Value, imageParams, error) {
 	bounds := img.Bounds()
 	params := imageParams{
 		origW: bounds.Dx(),
@@ -39,8 +39,7 @@ func preprocess(img image.Image, inputSize int) (*ort.Tensor[float32], imagePara
 		}
 	}
 
-	shape := ort.NewShape(1, 3, int64(inputSize), int64(inputSize))
-	tensor, err := ort.NewTensor(shape, data)
+	tensor, err := ort.NewTensor([]int64{1, 3, int64(inputSize), int64(inputSize)}, data)
 	return tensor, params, err
 }
 

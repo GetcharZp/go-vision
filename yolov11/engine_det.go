@@ -3,33 +3,31 @@ package yolov11
 import (
 	"fmt"
 	"github.com/getcharzp/go-vision"
+	ort "github.com/getcharzp/onnxruntime_purego"
 	"github.com/up-zero/gotool/convertutil"
-	ort "github.com/yalue/onnxruntime_go"
 	"image"
 	"log"
 )
 
 // DetEngine YOLOv11-det Engine
 type DetEngine struct {
-	session *ort.DynamicAdvancedSession
+	session *ort.Session
 	config  Config
 }
 
 // NewDetEngine 初始化检测引擎
 func NewDetEngine(cfg Config) (*DetEngine, error) {
-	onnxConfig := new(vision.OnnxConfig)
-	if err := convertutil.CopyProperties(cfg, onnxConfig); err != nil {
+	oc := new(vision.OnnxConfig)
+	if err := convertutil.CopyProperties(cfg, oc); err != nil {
 		return nil, fmt.Errorf("复制参数失败: %w", err)
 	}
 	// 初始化 ONNX
-	if err := onnxConfig.New(); err != nil {
+	if err := oc.New(); err != nil {
 		return nil, err
 	}
 
 	// 创建 Session
-	inputs := []string{"images"}
-	outputs := []string{"output0"}
-	session, err := ort.NewDynamicAdvancedSession(cfg.ModelPath, inputs, outputs, onnxConfig.SessionOptions)
+	session, err := oc.OnnxEngine.NewSession(cfg.ModelPath, oc.SessionOptions)
 	if err != nil {
 		return nil, fmt.Errorf("创建 ONNX 会话失败: %w", err)
 	}
@@ -57,17 +55,25 @@ func (e *DetEngine) Predict(img image.Image) ([]DetResult, error) {
 	defer inputTensor.Destroy()
 
 	// 推理
-	outputValues := make([]ort.Value, 1)
-	err = e.session.Run([]ort.Value{inputTensor}, outputValues)
+	inputValues := map[string]*ort.Value{
+		"images": inputTensor,
+	}
+	outputValues, err := e.session.Run(inputValues)
 	if err != nil {
 		return nil, fmt.Errorf("推理失败: %w", err)
 	}
-	defer outputValues[0].Destroy()
+	outputValue := outputValues["output0"]
+	defer outputValue.Destroy()
 
 	// Output Shape: [1, 84, 8400]
-	rawOutput := outputValues[0].(*ort.Tensor[float32])
-	data := rawOutput.GetData()
-	shape := rawOutput.GetShape()
+	data, err := ort.GetTensorData[float32](outputValue)
+	if err != nil {
+		return nil, fmt.Errorf("获取输出数据失败: %w", err)
+	}
+	shape, err := outputValue.GetShape()
+	if err != nil {
+		return nil, fmt.Errorf("获取输出形状失败: %w", err)
+	}
 
 	// 后处理
 	return e.postprocess(data, shape, params)

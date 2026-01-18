@@ -3,45 +3,38 @@ package sam2
 import (
 	"fmt"
 	"github.com/getcharzp/go-vision"
+	ort "github.com/getcharzp/onnxruntime_purego"
 	"github.com/up-zero/gotool/convertutil"
 	"github.com/up-zero/gotool/imageutil"
-	ort "github.com/yalue/onnxruntime_go"
 	"image"
 )
 
 // Engine 持有 ONNX Session，负责创建 ImageContext
 type Engine struct {
-	encoderSession *ort.DynamicAdvancedSession
-	decoderSession *ort.DynamicAdvancedSession
+	encoderSession *ort.Session
+	decoderSession *ort.Session
 	config         Config
 }
 
 // NewEngine 初始化 sam2 引擎
 func NewEngine(cfg Config) (*Engine, error) {
-	onnxConfig := new(vision.OnnxConfig)
-	if err := convertutil.CopyProperties(cfg, onnxConfig); err != nil {
+	oc := new(vision.OnnxConfig)
+	if err := convertutil.CopyProperties(cfg, oc); err != nil {
 		return nil, fmt.Errorf("复制参数失败: %w", err)
 	}
 	// 初始化 ONNX
-	if err := onnxConfig.New(); err != nil {
+	if err := oc.New(); err != nil {
 		return nil, err
 	}
 
 	// encoder session
-	encInputs := []string{"pixel_values"}
-	encOutputs := []string{"image_embeddings.0", "image_embeddings.1", "image_embeddings.2"}
-	encSession, err := ort.NewDynamicAdvancedSession(cfg.EncodeModelPath, encInputs, encOutputs, onnxConfig.SessionOptions)
+	encSession, err := oc.OnnxEngine.NewSession(cfg.EncodeModelPath, oc.SessionOptions)
 	if err != nil {
 		return nil, fmt.Errorf("创建 Encoder ONNX 会话失败: %w", err)
 	}
 
 	// decoder session
-	decInputs := []string{
-		"input_points", "input_labels", "input_boxes",
-		"image_embeddings.0", "image_embeddings.1", "image_embeddings.2",
-	}
-	decOutputs := []string{"iou_scores", "pred_masks", "object_score_logits"}
-	decSession, err := ort.NewDynamicAdvancedSession(cfg.DecodeModelPath, decInputs, decOutputs, onnxConfig.SessionOptions)
+	decSession, err := oc.OnnxEngine.NewSession(cfg.DecodeModelPath, oc.SessionOptions)
 	if err != nil {
 		encSession.Destroy()
 		return nil, fmt.Errorf("创建 Decoder ONNX 会话失败: %w", err)
@@ -57,14 +50,10 @@ func NewEngine(cfg Config) (*Engine, error) {
 // Destroy 释放相关资源
 func (e *Engine) Destroy() error {
 	if e.encoderSession != nil {
-		if err := e.encoderSession.Destroy(); err != nil {
-			return fmt.Errorf("销毁 Encoder ONNX 会话失败: %w", err)
-		}
+		e.encoderSession.Destroy()
 	}
 	if e.decoderSession != nil {
-		if err := e.decoderSession.Destroy(); err != nil {
-			return fmt.Errorf("销毁 Decoder ONNX 会话失败: %w", err)
-		}
+		e.decoderSession.Destroy()
 	}
 	return nil
 }
@@ -72,7 +61,7 @@ func (e *Engine) Destroy() error {
 // ImageContext 包含特定图像的特征缓存和参数
 type ImageContext struct {
 	engine          *Engine
-	imageEmbeddings []ort.Value
+	imageEmbeddings map[string]*ort.Value
 
 	origW, origH int
 	scale        float32
@@ -94,16 +83,18 @@ func (e *Engine) EncodeImage(img image.Image) (*ImageContext, error) {
 	tensorData := normalizeAndPad(resizedImg, inputSize, inputSize)
 
 	// 创建 Input Tensor
-	inputShape := ort.NewShape(1, 3, int64(inputSize), int64(inputSize))
-	inputTensor, err := ort.NewTensor(inputShape, tensorData)
+	inputTensor, err := ort.NewTensor([]int64{1, 3, int64(inputSize), int64(inputSize)}, tensorData)
 	if err != nil {
 		return nil, fmt.Errorf("创建图片 Input Tensor 失败: %w", err)
 	}
 	defer inputTensor.Destroy()
 
 	// Encoder 推理
-	outputs := make([]ort.Value, 3)
-	if err := e.encoderSession.Run([]ort.Value{inputTensor}, outputs); err != nil {
+	inputValues := map[string]*ort.Value{
+		"pixel_values": inputTensor,
+	}
+	outputs, err := e.encoderSession.Run(inputValues)
+	if err != nil {
 		return nil, fmt.Errorf("encoder 推理失败: %w", err)
 	}
 
@@ -160,38 +151,38 @@ func (ctx *ImageContext) DecodeRaw(points []Point) (*Result, error) {
 	numPoints := int64(len(points))
 
 	// 准备 Decoder Tensors
-	tPoints, err := ort.NewTensor(ort.NewShape(1, 1, numPoints, 2), coords)
+	tPoints, err := ort.NewTensor([]int64{1, 1, numPoints, 2}, coords)
 	if err != nil {
 		return nil, fmt.Errorf("创建 Decoder Points Tensor 失败: %w", err)
 	}
 	defer tPoints.Destroy()
 
-	tLabels, err := ort.NewTensor(ort.NewShape(1, 1, numPoints), labels)
+	tLabels, err := ort.NewTensor([]int64{1, 1, numPoints}, labels)
 	if err != nil {
 		return nil, fmt.Errorf("创建 Decoder Labels Tensor 失败: %w", err)
 	}
 	defer tLabels.Destroy()
 
 	// box 通过 point 控制
-	var emptyFloat []float32
-	tBoxes, err := ort.NewTensor(ort.NewShape(1, 0, 4), emptyFloat)
+	var emptyFloat = make([]float32, 4)
+	tBoxes, err := ort.NewTensor([]int64{1, 0, 4}, emptyFloat)
 	if err != nil {
 		return nil, fmt.Errorf("创建 Decoder Boxes Tensor 失败: %w", err)
 	}
 	defer tBoxes.Destroy()
 
-	inputs := []ort.Value{
-		tPoints,
-		tLabels,
-		tBoxes,
-		ctx.imageEmbeddings[0],
-		ctx.imageEmbeddings[1],
-		ctx.imageEmbeddings[2],
+	inputValues := map[string]*ort.Value{
+		"input_points":       tPoints,
+		"input_labels":       tLabels,
+		"input_boxes":        tBoxes,
+		"image_embeddings.0": ctx.imageEmbeddings["image_embeddings.0"],
+		"image_embeddings.1": ctx.imageEmbeddings["image_embeddings.1"],
+		"image_embeddings.2": ctx.imageEmbeddings["image_embeddings.2"],
 	}
-	outputs := make([]ort.Value, 3)
 
 	// Decoder 推理
-	if err := ctx.engine.decoderSession.Run(inputs, outputs); err != nil {
+	outputs, err := ctx.engine.decoderSession.Run(inputValues)
+	if err != nil {
 		return nil, fmt.Errorf("decoder 推理失败: %w", err)
 	}
 	defer func() {
@@ -201,8 +192,14 @@ func (ctx *ImageContext) DecodeRaw(points []Point) (*Result, error) {
 	}()
 
 	// 获取最佳 Mask
-	rawScores := outputs[0].(*ort.Tensor[float32]).GetData()
-	rawMasks := outputs[1].(*ort.Tensor[float32]).GetData()
+	rawScores, err := ort.GetTensorData[float32](outputs["iou_scores"])
+	if err != nil {
+		return nil, fmt.Errorf("获取 Decoder 输出数据失败: %w", err)
+	}
+	rawMasks, err := ort.GetTensorData[float32](outputs["pred_masks"])
+	if err != nil {
+		return nil, fmt.Errorf("获取 Decoder 输出数据失败: %w", err)
+	}
 
 	bestIdx := 0
 	bestScore := float32(-100.0)
