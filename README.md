@@ -24,7 +24,7 @@ tags:
    </a>
 </p>
 
-go-vision 基于 Golang + [ONNX](https://github.com/microsoft/onnxruntime/releases/tag/v1.23.2) 构建的视觉库，支持 SAM2、YOLOv11-Det、YOLOv11-Seg、YOLOv11-Cls、YOLOv11-Pose、YOLOv11-OBB 等模型。
+go-vision 基于 Golang + [ONNX](https://github.com/microsoft/onnxruntime/releases/tag/v1.23.2) 构建的视觉库，支持 SAM2、YOLOv11-Det、YOLOv11-Seg、YOLOv11-Cls、YOLOv11-Pose、YOLOv11-OBB、YOLO26-Det 等模型。
 
 ## 安装
 
@@ -274,3 +274,48 @@ func main() {
 | 原图                                                  | OBB图                                                       |
 |-----------------------------------------------------|------------------------------------------------------------|
 | <img width="100%" src="./examples/ship.jpg" alt=""> | <img width="100%" src="./examples/yolov11_obb.jpg" alt=""> |
+
+
+### yolo26-det
+
+```go
+package main
+
+import (
+	"fmt"
+	"github.com/getcharzp/go-vision/yolo26"
+	"github.com/up-zero/gotool/imageutil"
+	"image"
+	"image/color"
+	"image/draw"
+	"log"
+)
+
+func main() {
+	engine, err := yolo26.NewDetEngine(yolo26.DefaultDetConfig())
+	if err != nil {
+		log.Fatalf("初始化引擎失败: %v", err)
+	}
+	defer engine.Destroy()
+
+	img, _ := imageutil.Open("./test.png")
+	results, err := engine.Predict(img)
+	if err != nil {
+		log.Fatalf("预测失败: %v", err)
+	}
+
+	targetImg := image.NewRGBA(img.Bounds())
+	draw.Draw(targetImg, img.Bounds(), img, img.Bounds().Min, draw.Src)
+	fmt.Printf("检测到目标: %d 个\n", len(results))
+	for _, res := range results {
+		fmt.Printf("Class: %d, Score: %.2f, Box: %v\n", res.ClassID, res.Score, res.Box)
+		imageutil.DrawThickRectOutline(targetImg, res.Box, color.RGBA{R: 255, G: 0, B: 0, A: 255}, 3)
+	}
+	imageutil.Save("yolo26_det.jpg", targetImg, 50)
+}
+```
+
+| 原图                                                  | 检测结果                                                      |
+|-----------------------------------------------------|-----------------------------------------------------------|
+| <img width="100%" src="./examples/test.png" alt=""> | <img width="100%" src="./examples/yolo26_det.jpg" alt=""> |
+
