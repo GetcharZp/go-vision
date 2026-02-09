@@ -36,3 +36,27 @@ func TestYOLO26Det(t *testing.T) {
 	}
 	imageutil.Save("yolo26_det.jpg", targetImg, 50)
 }
+
+func TestYOLO26Seg(t *testing.T) {
+	cfg := yolo26.DefaultSegConfig()
+	cfg.ModelPath = "../yolo26_weights/yolo26s-seg.onnx"
+	cfg.OnnxRuntimeLibPath = "../lib/onnxruntime.dll"
+
+	engine, err := yolo26.NewSegEngine(cfg)
+	if err != nil {
+		t.Fatalf("初始化引擎失败: %v", err)
+	}
+	defer engine.Destroy()
+
+	img, _ := imageutil.Open("./test.png")
+	results, err := engine.Predict(img)
+	if err != nil {
+		t.Fatalf("预测失败: %v", err)
+	}
+
+	fmt.Printf("检测到目标: %d 个\n", len(results))
+	for idx, res := range results {
+		fmt.Printf("Class: %d, Score: %.2f, Box: %v\n", res.ClassID, res.Score, res.Box)
+		imageutil.Save(fmt.Sprintf("yolo26_seg_mask_%d.png", idx), res.Mask, 100)
+	}
+}

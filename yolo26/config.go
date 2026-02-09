@@ -64,3 +64,24 @@ type imageParams struct {
 	origW, origH int
 	scale        float32
 }
+
+// DefaultSegConfig 分割的默认配置
+func DefaultSegConfig() Config {
+	cfg := DefaultConfig()
+	cfg.ModelPath = "./yolo26_weights/yolo26m-seg.onnx"
+	return cfg
+}
+
+// SegResult 分割结果
+type SegResult struct {
+	// 分类ID，例如：
+	//	0: person
+	//  1: bicycle
+	//  2: car
+	// 详细映射参考：
+	//	https://github.com/ultralytics/ultralytics/blob/main/ultralytics/cfg/datasets/coco.yaml
+	ClassID int
+	Score   float32
+	Box     image.Rectangle // 分割出的矩形区域
+	Mask    *image.Gray     // 解码后的 Mask
+}

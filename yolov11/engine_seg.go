@@ -12,7 +12,6 @@ import (
 
 // SegEngine YOLOv11-seg Engine
 type SegEngine struct {
-	//session *ort.DynamicAdvancedSession
 	session *ort.Session
 	config  Config
 }

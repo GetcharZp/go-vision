@@ -4,6 +4,7 @@ import (
 	ort "github.com/getcharzp/onnxruntime_purego"
 	"github.com/up-zero/gotool/imageutil"
 	"image"
+	"math"
 )
 
 // preprocess 预处理
@@ -37,4 +38,8 @@ func preprocess(img image.Image, inputSize int) (*ort.Value, imageParams, error)
 
 	tensor, err := ort.NewTensor([]int64{1, 3, int64(inputSize), int64(inputSize)}, data)
 	return tensor, params, err
+}
+
+func sigmoid(x float32) float32 {
+	return 1.0 / (1.0 + float32(math.Exp(float64(-x))))
 }

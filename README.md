@@ -19,12 +19,10 @@ tags:
    <a href="https://github.com/getcharzp/go-vision/pulls" target="blank">
       <img src="https://img.shields.io/github/issues-pr/getcharzp/go-vision?style=for-the-badge" alt="go-vision pull-requests"/>
    </a>
-   <a href='https://github.com/getcharzp/go-vision/releases'>
-      <img src='https://img.shields.io/github/release/getcharzp/go-vision?&label=Latest&style=for-the-badge'>
-   </a>
 </p>
 
-go-vision 基于 Golang + [ONNX](https://github.com/microsoft/onnxruntime/releases/tag/v1.23.2) 构建的视觉库，支持 SAM2、YOLOv11-Det、YOLOv11-Seg、YOLOv11-Cls、YOLOv11-Pose、YOLOv11-OBB、YOLO26-Det 等模型。
+go-vision 基于 Golang + [ONNX](https://github.com/microsoft/onnxruntime/releases/tag/v1.23.2) 构建的视觉库，支持 SAM2、YOLOv11-Det、YOLOv11-Seg、YOLOv11-Cls、YOLOv11-Pose、YOLOv11-OBB、YOLO26-Det、
+YOLO26-Seg 等模型。
 
 ## 安装
 
@@ -318,4 +316,45 @@ func main() {
 | 原图                                                  | 检测结果                                                      |
 |-----------------------------------------------------|-----------------------------------------------------------|
 | <img width="100%" src="./examples/test.png" alt=""> | <img width="100%" src="./examples/yolo26_det.jpg" alt=""> |
+
+### yolo26-seg
+
+```go
+package main
+
+import (
+	"fmt"
+	"github.com/getcharzp/go-vision/yolo26"
+	"github.com/up-zero/gotool/imageutil"
+	"log"
+)
+
+func main() {
+	cfg := yolo26.DefaultSegConfig()
+	cfg.ModelPath = "../yolo26_weights/yolo26s-seg.onnx"
+	cfg.OnnxRuntimeLibPath = "../lib/onnxruntime.dll"
+
+	engine, err := yolo26.NewSegEngine(cfg)
+	if err != nil {
+		log.Fatalf("初始化引擎失败: %v", err)
+	}
+	defer engine.Destroy()
+
+	img, _ := imageutil.Open("./test.png")
+	results, err := engine.Predict(img)
+	if err != nil {
+		log.Fatalf("预测失败: %v", err)
+	}
+
+	fmt.Printf("检测到目标: %d 个\n", len(results))
+	for idx, res := range results {
+		fmt.Printf("Class: %d, Score: %.2f, Box: %v\n", res.ClassID, res.Score, res.Box)
+		imageutil.Save(fmt.Sprintf("yolo26_seg_mask_%d.png", idx), res.Mask, 100)
+	}
+}
+```
+
+| 原图                                                  | Mask图                                                            |
+|-----------------------------------------------------|------------------------------------------------------------------|
+| <img width="100%" src="./examples/test.png" alt=""> | <img width="100%" src="./examples/yolo26_seg_mask_0.png" alt=""> |
 
