@@ -85,3 +85,22 @@ type SegResult struct {
 	Box     image.Rectangle // 分割出的矩形区域
 	Mask    *image.Gray     // 解码后的 Mask
 }
+
+// ClassResult 分类结果
+type ClassResult struct {
+	// 分类ID，例如：
+	//	436: station wagon
+	//	656: minivan
+	// 详细映射参考：
+	//	https://github.com/ultralytics/ultralytics/blob/main/ultralytics/cfg/datasets/ImageNet.yaml
+	ClassID int
+	Score   float32
+}
+
+// DefaultClsConfig 分类的默认配置
+func DefaultClsConfig() Config {
+	cfg := DefaultConfig()
+	cfg.InputSize = 224
+	cfg.ModelPath = "./yolo26_weights/yolo26-cls.onnx"
+	return cfg
+}

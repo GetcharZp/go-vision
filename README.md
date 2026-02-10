@@ -22,7 +22,7 @@ tags:
 </p>
 
 go-vision 基于 Golang + [ONNX](https://github.com/microsoft/onnxruntime/releases/tag/v1.23.2) 构建的视觉库，支持 SAM2、YOLOv11-Det、YOLOv11-Seg、YOLOv11-Cls、YOLOv11-Pose、YOLOv11-OBB、YOLO26-Det、
-YOLO26-Seg 等模型。
+YOLO26-Seg、YOLO26-Cls 等模型。
 
 ## 安装
 
@@ -358,3 +358,45 @@ func main() {
 |-----------------------------------------------------|------------------------------------------------------------------|
 | <img width="100%" src="./examples/test.png" alt=""> | <img width="100%" src="./examples/yolo26_seg_mask_0.png" alt=""> |
 
+
+### yolo26-cls
+
+```go
+package main
+
+import (
+	"fmt"
+	"github.com/getcharzp/go-vision/yolo26"
+	"github.com/up-zero/gotool/imageutil"
+	"log"
+)
+
+func main() {
+	cfg := yolo26.DefaultClsConfig()
+	cfg.ModelPath = "../yolo26_weights/yolo26m-cls.onnx"
+	cfg.OnnxRuntimeLibPath = "../lib/onnxruntime.dll"
+
+	engine, err := yolo26.NewClsEngine(cfg)
+	if err != nil {
+		log.Fatalf("初始化引擎失败: %v", err)
+	}
+	defer engine.Destroy()
+
+	img, _ := imageutil.Open("./test.png")
+	results, err := engine.Predict(img, 5)
+	if err != nil {
+		log.Fatalf("预测失败: %v", err)
+	}
+
+	for _, res := range results {
+		fmt.Printf("Class: %d, Score: %.5f\n", res.ClassID, res.Score)
+	}
+}
+
+// 输出：
+//  Class: 656, Score: 0.99169
+//  Class: 436, Score: 0.00258
+//  Class: 511, Score: 0.00242
+//  Class: 654, Score: 0.00054
+//  Class: 675, Score: 0.00053
+```
