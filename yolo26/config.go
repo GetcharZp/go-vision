@@ -104,3 +104,26 @@ func DefaultClsConfig() Config {
 	cfg.ModelPath = "./yolo26_weights/yolo26-cls.onnx"
 	return cfg
 }
+
+// KeyPoint 单个关键点
+type KeyPoint struct {
+	X, Y  int     // 原图坐标
+	Score float32 // 可见性/置信度
+}
+
+// PoseResult 姿态估计结果
+type PoseResult struct {
+	//	https://github.com/ultralytics/ultralytics/blob/main/ultralytics/cfg/datasets/coco-pose.yaml
+	ClassID   int
+	Score     float32
+	Box       image.Rectangle
+	KeyPoints []KeyPoint // 关键点列表
+}
+
+// DefaultPoseConfig 姿势的默认配置
+func DefaultPoseConfig() Config {
+	cfg := DefaultConfig()
+	cfg.NumClasses = 1
+	cfg.ModelPath = "./yolo26_weights/yolo26m-pose.onnx"
+	return cfg
+}

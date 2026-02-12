@@ -4,6 +4,8 @@ import (
 	ort "github.com/getcharzp/onnxruntime_purego"
 	"github.com/up-zero/gotool/imageutil"
 	"image"
+	"image/color"
+	"image/draw"
 	"math"
 )
 
@@ -42,4 +44,49 @@ func preprocess(img image.Image, inputSize int) (*ort.Value, imageParams, error)
 
 func sigmoid(x float32) float32 {
 	return 1.0 / (1.0 + float32(math.Exp(float64(-x))))
+}
+
+// 定义骨架连接对
+var skeleton = [][2]int{
+	{15, 13}, {13, 11}, {16, 14}, {14, 12}, // 腿
+	{11, 12}, {5, 11}, {6, 12}, // 躯干
+	{5, 6}, {5, 7}, {6, 8}, {7, 9}, {8, 10}, // 臂/肩
+	{1, 2}, {0, 1}, {0, 2}, {1, 3}, {2, 4}, // 面部
+}
+
+// DrawPoseResult 将骨架绘制到图片上
+//
+// # Params:
+//
+//	img: 原图
+//	results: 姿态结果
+func DrawPoseResult(img image.Image, results []PoseResult) image.Image {
+	dst := image.NewRGBA(img.Bounds())
+	draw.Draw(dst, img.Bounds(), img, img.Bounds().Min, draw.Src)
+
+	lineColor := color.RGBA{G: 255, A: 255}  // 绿色骨架
+	pointColor := color.RGBA{R: 255, A: 255} // 红色关键点
+
+	for _, res := range results {
+		kpts := res.KeyPoints
+
+		// 绘制连接线
+		for _, pair := range skeleton {
+			idxA, idxB := pair[0], pair[1]
+			// 获取两个点
+			kpA := kpts[idxA]
+			kpB := kpts[idxB]
+			if kpA.Score > 0.5 && kpB.Score > 0.5 {
+				imageutil.DrawThickLine(dst, image.Point{X: kpA.X, Y: kpA.Y}, image.Point{X: kpB.X, Y: kpB.Y}, 5, lineColor)
+			}
+		}
+
+		// 绘制关键点
+		for _, kp := range kpts {
+			if kp.Score > 0.5 {
+				imageutil.DrawFilledCircle(dst, image.Point{X: kp.X, Y: kp.Y}, 10, pointColor)
+			}
+		}
+	}
+	return dst
 }

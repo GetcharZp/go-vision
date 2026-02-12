@@ -82,3 +82,24 @@ func TestYOLO26Cls(t *testing.T) {
 		fmt.Printf("Class: %d, Score: %.5f\n", res.ClassID, res.Score)
 	}
 }
+
+func TestYOLO26Pose(t *testing.T) {
+	cfg := yolo26.DefaultPoseConfig()
+	cfg.ModelPath = "../yolo26_weights/yolo26m-pose.onnx"
+	cfg.OnnxRuntimeLibPath = "../lib/onnxruntime.dll"
+
+	engine, err := yolo26.NewPoseEngine(cfg)
+	if err != nil {
+		t.Fatalf("初始化引擎失败: %v", err)
+	}
+	defer engine.Destroy()
+
+	img, _ := imageutil.Open("./person.jpg")
+	results, err := engine.Predict(img)
+	if err != nil {
+		t.Fatalf("预测失败: %v", err)
+	}
+
+	dst := yolo26.DrawPoseResult(img, results)
+	imageutil.Save("yolo26_pose.jpg", dst, 50)
+}

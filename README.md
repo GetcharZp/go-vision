@@ -22,7 +22,7 @@ tags:
 </p>
 
 go-vision 基于 Golang + [ONNX](https://github.com/microsoft/onnxruntime/releases/tag/v1.23.2) 构建的视觉库，支持 SAM2、YOLOv11-Det、YOLOv11-Seg、YOLOv11-Cls、YOLOv11-Pose、YOLOv11-OBB、YOLO26-Det、
-YOLO26-Seg、YOLO26-Cls 等模型。
+YOLO26-Seg、YOLO26-Cls、YOLO26-Pose 等模型。
 
 ## 安装
 
@@ -400,3 +400,40 @@ func main() {
 //  Class: 654, Score: 0.00054
 //  Class: 675, Score: 0.00053
 ```
+
+### yolo26-pose
+
+```go
+package main
+
+import (
+	"github.com/getcharzp/go-vision/yolo26"
+	"github.com/up-zero/gotool/imageutil"
+	"log"
+)
+
+func main() {
+	cfg := yolo26.DefaultPoseConfig()
+	cfg.ModelPath = "../yolo26_weights/yolo26m-pose.onnx"
+	cfg.OnnxRuntimeLibPath = "../lib/onnxruntime.dll"
+
+	engine, err := yolo26.NewPoseEngine(cfg)
+	if err != nil {
+		log.Fatalf("初始化引擎失败: %v", err)
+	}
+	defer engine.Destroy()
+
+	img, _ := imageutil.Open("./person.jpg")
+	results, err := engine.Predict(img)
+	if err != nil {
+		log.Fatalf("预测失败: %v", err)
+	}
+
+	dst := yolo26.DrawPoseResult(img, results)
+	imageutil.Save("yolo26_pose.jpg", dst, 50)
+}
+```
+
+| 原图                                                    | 姿态图                                                        |
+|-------------------------------------------------------|------------------------------------------------------------|
+| <img width="100%" src="./examples/person.jpg" alt=""> | <img width="100%" src="./examples/yolo26_pose.jpg" alt=""> |
