@@ -127,3 +127,23 @@ func DefaultPoseConfig() Config {
 	cfg.ModelPath = "./yolo26_weights/yolo26m-pose.onnx"
 	return cfg
 }
+
+// OBBResult 旋转目标检测结果
+type OBBResult struct {
+	ClassID int
+	Score   float32
+	// 旋转框的顶点坐标：TopLeft, TopRight, BottomRight, BottomLeft
+	Corners [4]image.Point
+
+	Center image.Point
+	Angle  float32 // 弧度
+}
+
+// DefaultOBBConfig OBB的默认配置
+func DefaultOBBConfig() Config {
+	cfg := DefaultConfig()
+	cfg.InputSize = 1024
+	cfg.NumClasses = 15
+	cfg.ModelPath = "./yolo26_weights/yolo26m-obb.onnx"
+	return cfg
+}

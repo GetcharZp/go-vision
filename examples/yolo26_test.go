@@ -103,3 +103,28 @@ func TestYOLO26Pose(t *testing.T) {
 	dst := yolo26.DrawPoseResult(img, results)
 	imageutil.Save("yolo26_pose.jpg", dst, 50)
 }
+
+func TestYOLO26OBB(t *testing.T) {
+	cfg := yolo26.DefaultOBBConfig()
+	cfg.ModelPath = "../yolo26_weights/yolo26m-obb.onnx"
+	cfg.OnnxRuntimeLibPath = "../lib/onnxruntime.dll"
+
+	engine, err := yolo26.NewOBBEngine(cfg)
+	if err != nil {
+		t.Fatalf("初始化引擎失败: %v", err)
+	}
+	defer engine.Destroy()
+
+	img, _ := imageutil.Open("./ship.jpg")
+	results, err := engine.Predict(img)
+	if err != nil {
+		t.Fatalf("预测失败: %v", err)
+	}
+
+	dst := image.NewRGBA(img.Bounds())
+	draw.Draw(dst, img.Bounds(), img, img.Bounds().Min, draw.Src)
+	for _, result := range results {
+		imageutil.DrawThickPolygonOutline(dst, result.Corners[:], 3, color.RGBA{R: 255, G: 0, B: 0, A: 255})
+	}
+	imageutil.Save("yolo26_obb.jpg", dst, 50)
+}

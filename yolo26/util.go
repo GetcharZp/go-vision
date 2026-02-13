@@ -90,3 +90,34 @@ func DrawPoseResult(img image.Image, results []PoseResult) image.Image {
 	}
 	return dst
 }
+
+// getRotatedCorners 计算旋转矩形的4个角点
+func getRotatedCorners(cx, cy, w, h, angle float32) [4][2]float32 {
+	cosA := float32(math.Cos(float64(angle)))
+	sinA := float32(math.Sin(float64(angle)))
+
+	// 定义未旋转时的半宽半高向量
+	// 0: -w/2, -h/2 (TopLeft)
+	// 1: +w/2, -h/2 (TopRight)
+	// 2: +w/2, +h/2 (BottomRight)
+	// 3: -w/2, +h/2 (BottomLeft)
+
+	dx := []float32{-w / 2, w / 2, w / 2, -w / 2}
+	dy := []float32{-h / 2, -h / 2, h / 2, h / 2}
+
+	var corners [4][2]float32
+
+	for i := 0; i < 4; i++ {
+		// 旋转矩阵变换
+		// x' = x*cos - y*sin
+		// y' = x*sin + y*cos
+		rx := dx[i]*cosA - dy[i]*sinA
+		ry := dx[i]*sinA + dy[i]*cosA
+
+		// 加上中心点坐标
+		corners[i][0] = cx + rx
+		corners[i][1] = cy + ry
+	}
+
+	return corners
+}

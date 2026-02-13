@@ -22,7 +22,7 @@ tags:
 </p>
 
 go-vision 基于 Golang + [ONNX](https://github.com/microsoft/onnxruntime/releases/tag/v1.23.2) 构建的视觉库，支持 SAM2、YOLOv11-Det、YOLOv11-Seg、YOLOv11-Cls、YOLOv11-Pose、YOLOv11-OBB、YOLO26-Det、
-YOLO26-Seg、YOLO26-Cls、YOLO26-Pose 等模型。
+YOLO26-Seg、YOLO26-Cls、YOLO26-Pose、YOLO26-OBB 等模型。
 
 ## 安装
 
@@ -437,3 +437,47 @@ func main() {
 | 原图                                                    | 姿态图                                                        |
 |-------------------------------------------------------|------------------------------------------------------------|
 | <img width="100%" src="./examples/person.jpg" alt=""> | <img width="100%" src="./examples/yolo26_pose.jpg" alt=""> |
+
+### yolo26-obb
+
+```go
+package main
+
+import (
+	"github.com/getcharzp/go-vision/yolo26"
+	"github.com/up-zero/gotool/imageutil"
+	"image"
+	"image/color"
+	"image/draw"
+	"log"
+)
+
+func main() {
+	cfg := yolo26.DefaultOBBConfig()
+	cfg.ModelPath = "../yolo26_weights/yolo26m-obb.onnx"
+	cfg.OnnxRuntimeLibPath = "../lib/onnxruntime.dll"
+
+	engine, err := yolo26.NewOBBEngine(cfg)
+	if err != nil {
+		log.Fatalf("初始化引擎失败: %v", err)
+	}
+	defer engine.Destroy()
+
+	img, _ := imageutil.Open("./ship.jpg")
+	results, err := engine.Predict(img)
+	if err != nil {
+		log.Fatalf("预测失败: %v", err)
+	}
+
+	dst := image.NewRGBA(img.Bounds())
+	draw.Draw(dst, img.Bounds(), img, img.Bounds().Min, draw.Src)
+	for _, result := range results {
+		imageutil.DrawThickPolygonOutline(dst, result.Corners[:], 3, color.RGBA{R: 255, G: 0, B: 0, A: 255})
+	}
+	imageutil.Save("yolo26_obb.jpg", dst, 50)
+}
+```
+
+| 原图                                                  | OBB图                                                      |
+|-----------------------------------------------------|-----------------------------------------------------------|
+| <img width="100%" src="./examples/ship.jpg" alt=""> | <img width="100%" src="./examples/yolo26_obb.jpg" alt=""> |

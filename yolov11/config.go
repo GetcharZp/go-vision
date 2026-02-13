@@ -153,8 +153,7 @@ type PoseResult struct {
 type OBBResult struct {
 	ClassID int
 	Score   float32
-	// 旋转框的顶点坐标
-	// 顺序通常是：TopLeft, TopRight, BottomRight, BottomLeft
+	// 旋转框的顶点坐标：TopLeft, TopRight, BottomRight, BottomLeft
 	Corners [4]image.Point
 
 	Center image.Point
