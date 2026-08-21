@@ -22,7 +22,7 @@ tags:
 </p>
 
 go-vision 基于 Golang + [ONNX](https://github.com/microsoft/onnxruntime/releases/tag/v1.23.2) 构建的视觉库，支持 SAM2、YOLOv11-Det、YOLOv11-Seg、YOLOv11-Cls、YOLOv11-Pose、YOLOv11-OBB、YOLO26-Det、
-YOLO26-Seg、YOLO26-Cls、YOLO26-Pose、YOLO26-OBB 等模型。
+YOLO26-Seg、YOLO26-Cls、YOLO26-Pose、YOLO26-OBB、DINOv2-Seg 等模型。
 
 ## 安装
 
@@ -481,3 +481,50 @@ func main() {
 | 原图                                                  | OBB图                                                      |
 |-----------------------------------------------------|-----------------------------------------------------------|
 | <img width="100%" src="./examples/ship.jpg" alt=""> | <img width="100%" src="./examples/yolo26_obb.jpg" alt=""> |
+
+
+### dinov2-seg
+
+DINOv2 输出的是 Patch 特征 (`last_hidden_state`), 通过 k-means 聚类将特征相似的区域划分为同一个分割区域, 属于**无监督分割**。
+
+```go
+package main
+
+import (
+	"fmt"
+	"github.com/getcharzp/go-vision/dinov2"
+	"github.com/up-zero/gotool/imageutil"
+	"log"
+)
+
+func main() {
+	cfg := dinov2.DefaultConfig()
+	cfg.ModelPath = "../dinov2_weights/model.onnx"
+	cfg.OnnxRuntimeLibPath = "../lib/onnxruntime.dll"
+	cfg.NumClusters = 3 // 分割区域数量
+
+	engine, err := dinov2.NewEngine(cfg)
+	if err != nil {
+		log.Fatalf("初始化引擎失败: %v", err)
+	}
+	defer engine.Destroy()
+
+	img, _ := imageutil.Open("./test.png")
+	result, err := engine.Predict(img)
+	if err != nil {
+		log.Fatalf("预测失败: %v", err)
+	}
+
+	fmt.Printf("原图尺寸: %d x %d, 分割区域: %d 个\n", result.Width, result.Height, len(result.Masks))
+	for idx, mask := range result.Masks {
+		imageutil.Save(fmt.Sprintf("dinov2_seg_mask_%d.png", idx), mask, 100)
+	}
+
+	dst := dinov2.DrawResult(img, result)
+	imageutil.Save("dinov2_seg.jpg", dst, 90)
+}
+```
+
+| 原图                                                  | 分割结果                                                        |
+|-----------------------------------------------------|--------------------------------------------------------------|
+| <img width="100%" src="./examples/test.png" alt=""> | <img width="100%" src="./examples/dinov2_seg.jpg" alt=""> |
